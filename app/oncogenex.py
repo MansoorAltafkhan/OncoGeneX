@@ -413,6 +413,145 @@ st.markdown("""
         .dna-3d { font-size: 11rem; }
     }
 
+
+
+    /* ================================
+       MOBILE RESPONSIVE FIX
+    ================================= */
+    html, body {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .stApp,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stMain"] {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
+
+    @media (max-width: 768px) {
+        .main .block-container {
+            width: 100%;
+            max-width: 100%;
+            padding: 1rem 0.75rem 2rem 0.75rem;
+        }
+
+        .oncogenex-hero {
+            width: 100%;
+            max-width: 100%;
+            min-height: auto;
+            padding: 1.25rem;
+            margin: 0 0 1.25rem 0;
+            border-radius: 20px;
+        }
+
+        .oncogenex-hero:before {
+            inset: 7px;
+            border-radius: 14px;
+        }
+
+        .hero-grid {
+            width: 100%;
+            max-width: 100%;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 1.25rem;
+        }
+
+        .hero-brand {
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .hero-dna {
+            font-size: 3.5rem;
+        }
+
+        .hero-name {
+            font-size: clamp(2.2rem, 13vw, 3.5rem);
+            letter-spacing: -0.04em;
+            overflow-wrap: anywhere;
+        }
+
+        .hero-tagline {
+            margin: 0.75rem 0 1rem 0;
+            font-size: 1.05rem;
+            line-height: 1.4;
+            padding-bottom: 0.75rem;
+            overflow-wrap: anywhere;
+        }
+
+        .hero-message {
+            width: 100%;
+            max-width: 100%;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.6rem;
+            padding: 1rem;
+            font-size: 1rem;
+            line-height: 1.5;
+            overflow-wrap: anywhere;
+        }
+
+        .hero-message-icon {
+            font-size: 2.2rem;
+        }
+
+        .hero-build {
+            width: 100%;
+            max-width: 100%;
+            padding: 0.9rem 1rem;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            overflow-wrap: anywhere;
+        }
+
+        .hero-build strong {
+            font-size: 1rem;
+        }
+
+        .hero-build .sep {
+            display: inline-block;
+            margin: 0 0.35rem;
+        }
+
+        .hero-visual {
+            width: 100%;
+            max-width: 100%;
+            min-height: 210px;
+        }
+
+        .dna-3d {
+            width: min(100%, 300px);
+            height: 210px;
+            transform: rotate(8deg) scaleX(0.9);
+        }
+
+        [data-testid="stHorizontalBlock"] {
+            flex-wrap: wrap;
+        }
+
+        [data-testid="stHorizontalBlock"] > div {
+            min-width: 0 !important;
+        }
+
+        .dashboard-card,
+        .gene-card,
+        .info-box,
+        .status-significant,
+        .status-up,
+        .status-down,
+        .status-not-significant {
+            width: 100%;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+        }
+    }
+
     /* ================================
        FOOTER
     ================================= */
