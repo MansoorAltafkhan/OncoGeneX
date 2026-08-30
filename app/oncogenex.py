@@ -531,12 +531,21 @@ st.markdown("""
             transform: rotate(8deg) scaleX(0.9);
         }
 
+        /* Stack Streamlit column layouts vertically on phones.
+           This prevents 4 desktop columns from becoming extremely narrow. */
         [data-testid="stHorizontalBlock"] {
-            flex-wrap: wrap;
+            flex-direction: column !important;
+            flex-wrap: nowrap !important;
+            width: 100% !important;
+            gap: 1rem !important;
         }
 
-        [data-testid="stHorizontalBlock"] > div {
+        [data-testid="stHorizontalBlock"] > div,
+        [data-testid="column"] {
+            width: 100% !important;
             min-width: 0 !important;
+            max-width: 100% !important;
+            flex: 1 1 100% !important;
         }
 
         .dashboard-card,
