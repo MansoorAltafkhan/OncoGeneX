@@ -882,7 +882,7 @@ if PAGE == "Dashboard":
                     <div>Exploring differential gene expression, cancer versus normal samples, biological pathways and molecular networks.</div>
                 </div>
                 <div class="hero-build">
-                    Built by <strong>Mansoor</strong><span class="sep">|</span><strong>Kalindhy</strong><span class="sep">|</span><strong>Heama shri</strong><span class="sep">|</span><strong>Kireeti</strong>
+                    Built by <strong>Mansoor</strong><span class="sep">|</span><strong>Kalindhy</strong><span class="sep">|</span><strong>Heama shree</strong><span class="sep">|</span><strong>Kireeti</strong>
                 </div>
             </div>
             <div class="hero-visual" aria-label="DNA analysis visual">
