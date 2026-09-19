@@ -11,11 +11,6 @@ from statsmodels.stats.multitest import multipletests
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-
-# ============================================================
-# CONFIGURATION
-# ============================================================
-
 EXPRESSION_FILE = Path("data/processed/processed_expression.csv")
 METADATA_FILE = Path("data/raw/GSE40791_final_metadata.xlsx")
 ANNOTATION_FILE = Path("data/raw/GPL570-55999.txt")
@@ -26,14 +21,8 @@ PLOTS_DIR = RESULTS_DIR / "plots"
 FDR_THRESHOLD = 0.05
 LOG2FC_THRESHOLD = 1.0
 
-# Number of genes used for heatmap/PCA.
 HEATMAP_TOP_N = 20
 PCA_TOP_VARIABLE_GENES = 2000
-
-
-# ============================================================
-# HELPER FUNCTIONS
-# ============================================================
 
 def ensure_required_columns(df, columns, name):
     """Raise a clear error if required columns are missing."""
@@ -43,7 +32,6 @@ def ensure_required_columns(df, columns, name):
             f"{name} is missing required columns: {missing}\n"
             f"Available columns: {df.columns.tolist()}"
         )
-
 
 def clean_gene_symbol(value):
     """
@@ -58,9 +46,7 @@ def clean_gene_symbol(value):
     if value in {"", "---", "nan", "NA"}:
         return ""
 
-    # Keep the first annotated symbol when multiple symbols are present.
     return value.split(" /// ")[0].strip()
-
 
 def zscore_rows(df):
     """
@@ -72,7 +58,6 @@ def zscore_rows(df):
 
     scaled = df.sub(mean, axis=0).div(std, axis=0)
     return scaled.fillna(0)
-
 
 def make_unique_labels(labels):
     """
@@ -93,11 +78,6 @@ def make_unique_labels(labels):
 
     return unique
 
-
-# ============================================================
-# 1. LOAD DATA
-# ============================================================
-
 print("\n================================================")
 print("ONCOGENEX - DIFFERENTIAL EXPRESSION PIPELINE")
 print("================================================")
@@ -109,14 +89,11 @@ metadata = pd.read_excel(METADATA_FILE)
 
 ensure_required_columns(metadata, ["gsm_id", "group"], "Metadata")
 
-# Convert sample IDs to strings before matching.
 expression.index = expression.index.astype(str).str.strip()
 metadata["gsm_id"] = metadata["gsm_id"].astype(str).str.strip()
 
-# Convert expression values to numeric.
 expression = expression.apply(pd.to_numeric, errors="coerce")
 
-# Normalize group names.
 metadata["group"] = (
     metadata["group"]
     .astype(str)
@@ -126,11 +103,6 @@ metadata["group"] = (
 
 print("Expression shape:", expression.shape)
 print("Metadata shape:", metadata.shape)
-
-
-# ============================================================
-# 2. ALIGN EXPRESSION AND METADATA
-# ============================================================
 
 print("\n--- ALIGNING SAMPLES ---")
 
@@ -147,7 +119,6 @@ if len(common_ids) == 0:
 expression = expression.loc[common_ids].copy()
 metadata = metadata.loc[common_ids].copy()
 
-# Final safety check.
 if not expression.index.equals(metadata.index):
     raise RuntimeError("Sample alignment failed.")
 
@@ -156,11 +127,6 @@ print("Expression samples after alignment:", expression.shape[0])
 print("Metadata samples after alignment:", metadata.shape[0])
 print("\nGroup distribution:")
 print(metadata["group"].value_counts())
-
-
-# ============================================================
-# 3. SELECT CANCER AND NORMAL SAMPLES
-# ============================================================
 
 print("\n--- SEPARATING GROUPS ---")
 
@@ -187,21 +153,14 @@ if len(cancer_samples) < 2 or len(normal_samples) < 2:
 print("Cancer samples:", len(cancer_samples))
 print("Normal samples:", len(normal_samples))
 
-
-# ============================================================
-# 4. FILTER INVALID / LOW-VARIANCE GENES
-# ============================================================
-
 print("\n--- FILTERING GENES ---")
 
-# Remove genes that are completely missing.
 nonempty_genes = expression.columns[
     expression.notna().any(axis=0)
 ]
 
 expression = expression.loc[:, nonempty_genes]
 
-# Variance is calculated across all aligned samples.
 gene_variance = expression.var(axis=0, ddof=1)
 valid_genes = gene_variance[gene_variance > 1e-10].index
 
@@ -210,11 +169,6 @@ print("Genes retained for statistical testing:", len(valid_genes))
 
 if len(valid_genes) == 0:
     raise ValueError("No genes remain after variance filtering.")
-
-
-# ============================================================
-# 5. WELCH'S T-TEST
-# ============================================================
 
 print("\n--- PERFORMING WELCH'S T-TEST ---")
 
@@ -238,11 +192,6 @@ valid_pvalue_mask = np.isfinite(p_values)
 print("Valid p-values:", int(valid_pvalue_mask.sum()))
 print("Invalid p-values:", int((~valid_pvalue_mask).sum()))
 
-
-# ============================================================
-# 6. FDR CORRECTION
-# ============================================================
-
 print("\n--- PERFORMING FDR CORRECTION ---")
 
 adjusted_p_values = pd.Series(
@@ -260,18 +209,11 @@ if len(valid_p_values) > 0:
     )
     adjusted_p_values.loc[valid_p_values.index] = adjusted_valid
 
-
-# ============================================================
-# 7. CREATE COMPLETE DIFFERENTIAL EXPRESSION RESULTS
-# ============================================================
-
 print("\n--- CREATING RESULTS TABLE ---")
 
 mean_cancer = cancer_samples.mean(axis=0)
 mean_normal = normal_samples.mean(axis=0)
 
-# The input expression values are assumed to already be log2-scale.
-# Therefore Log2FC is the difference between group means.
 log2_fold_change = mean_cancer - mean_normal
 
 all_t_statistics = pd.Series(
@@ -298,8 +240,6 @@ de_results = pd.DataFrame({
     "Adjusted_P_Value": adjusted_p_values.reindex(expression.columns).values,
 })
 
-# Do not call every negative gene "downregulated".
-# First define statistical significance, then assign regulation.
 de_results["Significant"] = (
     (de_results["Adjusted_P_Value"] < FDR_THRESHOLD)
     & (de_results["Log2FC"].abs() >= LOG2FC_THRESHOLD)
@@ -326,11 +266,6 @@ significant_genes = (
     .copy()
 )
 
-
-# ============================================================
-# 8. ANNOTATE PROBES WITH GENE SYMBOLS
-# ============================================================
-
 print("\n--- MAPPING PROBES TO GENE SYMBOLS ---")
 
 annotation = pd.read_csv(
@@ -356,13 +291,11 @@ gene_annotation["Gene Symbol"] = gene_annotation["Gene Symbol"].apply(
     clean_gene_symbol
 )
 
-# Keep one annotation row per probe ID.
 gene_annotation = gene_annotation.drop_duplicates(
     subset="Gene",
     keep="first"
 )
 
-# Annotate ALL genes, not only significant genes.
 de_results_annotated = de_results.merge(
     gene_annotation,
     on="Gene",
@@ -402,18 +335,12 @@ print(
     int(significant_genes_annotated["Gene Symbol"].ne("").sum())
 )
 
-
-# ============================================================
-# 9. CREATE UNIQUE GENE LISTS
-# ============================================================
-
 print("\n--- CREATING UNIQUE GENE LISTS ---")
 
 mapped_significant = significant_genes_annotated.loc[
     significant_genes_annotated["Gene Symbol"].ne("")
 ].copy()
 
-# A gene may have several probes. Keep the most significant probe.
 mapped_significant = (
     mapped_significant
     .sort_values(
@@ -448,11 +375,6 @@ downregulated_genes = (
 top_20_upregulated = upregulated_genes.head(20)
 top_20_downregulated = downregulated_genes.head(20)
 
-
-# ============================================================
-# 10. SAVE TABLES
-# ============================================================
-
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -485,11 +407,6 @@ top_20_downregulated.to_csv(
     RESULTS_DIR / "top_20_downregulated_genes.csv",
     index=False
 )
-
-
-# ============================================================
-# 11. VOLCANO PLOT
-# ============================================================
 
 print("\n--- CREATING VOLCANO PLOT ---")
 
@@ -558,19 +475,12 @@ plt.close()
 
 print("Volcano plot saved.")
 
-
-# ============================================================
-# 12. MA PLOT
-# ============================================================
-
 print("\n--- CREATING MA PLOT ---")
 
 ma_data = de_results_annotated.dropna(
     subset=["Mean_Cancer", "Mean_Normal", "Log2FC"]
 ).copy()
 
-# Since data are already on a log2 expression scale, the arithmetic
-# mean of the two group means is the standard A-axis on that scale.
 ma_data["Average_Expression"] = (
     ma_data["Mean_Cancer"] + ma_data["Mean_Normal"]
 ) / 2
@@ -629,11 +539,6 @@ plt.close()
 
 print("MA plot saved.")
 
-
-# ============================================================
-# 13. TOP 10 UPREGULATED GENES
-# ============================================================
-
 print("\n--- CREATING TOP 10 UPREGULATED GENE PLOT ---")
 
 plot_up = upregulated_genes.head(10).sort_values(
@@ -658,11 +563,6 @@ plt.savefig(
 plt.close()
 
 print("Top upregulated gene plot saved.")
-
-
-# ============================================================
-# 14. TOP 10 DOWNREGULATED GENES
-# ============================================================
 
 print("\n--- CREATING TOP 10 DOWNREGULATED GENE PLOT ---")
 
@@ -689,14 +589,8 @@ plt.close()
 
 print("Top downregulated gene plot saved.")
 
-
-# ============================================================
-# 15. HEATMAP OF TOP 20 UNIQUE DIFFERENTIALLY EXPRESSED GENES
-# ============================================================
-
 print("\n--- CREATING HEATMAP ---")
 
-# Select unique gene symbols by strongest statistical significance.
 heatmap_candidates = (
     mapped_significant
     .sort_values(
@@ -716,7 +610,7 @@ top_probe_ids = [
 if len(top_probe_ids) < 2:
     print("Heatmap skipped: fewer than 2 selected probes were found.")
 else:
-    # Samples x genes -> transpose to genes x samples.
+
     heatmap_matrix = expression.loc[:, top_probe_ids].T.copy()
 
     probe_to_symbol = (
@@ -732,7 +626,6 @@ else:
 
     heatmap_scaled = zscore_rows(heatmap_matrix)
 
-    # Ensure group colors are aligned to the heatmap sample columns.
     sample_groups = metadata.loc[
         heatmap_scaled.columns,
         "group"
@@ -771,15 +664,8 @@ else:
 
     print("Heatmap saved.")
 
-
-# ============================================================
-# 16. PCA
-# ============================================================
-
 print("\n--- CREATING PCA PLOT ---")
 
-# PCA on all probes can be dominated by a large number of uninformative
-# probes. Use the most variable probes while preserving every sample.
 pca_variance = expression.var(axis=0, ddof=1)
 pca_genes = (
     pca_variance
@@ -790,13 +676,11 @@ pca_genes = (
 
 pca_input = expression.loc[:, pca_genes].copy()
 
-# Median-impute missing values gene-wise for PCA.
 pca_input = pca_input.apply(
     lambda col: col.fillna(col.median()),
     axis=0
 )
 
-# Remove any remaining all-NaN genes.
 pca_input = pca_input.dropna(axis=1, how="all")
 
 X_scaled = StandardScaler().fit_transform(pca_input)
@@ -849,11 +733,6 @@ plt.savefig(
 plt.close()
 
 print("PCA plot saved.")
-
-
-# ============================================================
-# 17. SUMMARY
-# ============================================================
 
 print("\n================================================")
 print("ANALYSIS COMPLETED SUCCESSFULLY")

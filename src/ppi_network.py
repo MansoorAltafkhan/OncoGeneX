@@ -5,28 +5,13 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import time
 
-
-# ============================================================
-# 1. CREATE OUTPUT DIRECTORY
-# ============================================================
-
 os.makedirs("results/ppi", exist_ok=True)
-
-
-# ============================================================
-# 2. LOAD DIFFERENTIALLY EXPRESSED GENES
-# ============================================================
 
 up_file = "results/upregulated_genes.csv"
 down_file = "results/downregulated_genes.csv"
 
 up_df = pd.read_csv(up_file)
 down_df = pd.read_csv(down_file)
-
-
-# ============================================================
-# 3. EXTRACT GENE SYMBOLS
-# ============================================================
 
 def extract_gene_symbols(df):
 
@@ -64,19 +49,11 @@ def extract_gene_symbols(df):
 
     return genes
 
-
 up_genes = extract_gene_symbols(up_df)
 down_genes = extract_gene_symbols(down_df)
 
-
 print("Number of upregulated genes:", len(up_genes))
 print("Number of downregulated genes:", len(down_genes))
-
-
-# ============================================================
-# 4. STRING PPI NETWORK FUNCTION
-#    USING GENE BATCHES TO AVOID REQUEST SIZE ERRORS
-# ============================================================
 
 def get_string_network(genes, group_name):
 
@@ -84,7 +61,6 @@ def get_string_network(genes, group_name):
 
     url = "https://string-db.org/api/tsv/network"
 
-    # Number of genes per API request
     batch_size = 400
 
     all_networks = []
@@ -93,7 +69,6 @@ def get_string_network(genes, group_name):
         len(genes) + batch_size - 1
     ) // batch_size
 
-    # Process genes in batches
     for i in range(0, len(genes), batch_size):
 
         batch_number = (
@@ -110,7 +85,6 @@ def get_string_network(genes, group_name):
             f"({len(gene_batch)} genes)..."
         )
 
-        # Join genes properly
         identifiers = "\r".join(
             gene_batch
         )
@@ -123,7 +97,6 @@ def get_string_network(genes, group_name):
 
         try:
 
-            # POST avoids URL length problems
             response = requests.post(
                 url,
                 data=params,
@@ -178,13 +151,7 @@ def get_string_network(genes, group_name):
                 f"{batch_number}: {e}"
             )
 
-        # Small delay between requests
         time.sleep(1)
-
-
-    # ========================================================
-    # COMBINE ALL BATCH RESULTS
-    # ========================================================
 
     if len(all_networks) == 0:
 
@@ -195,14 +162,11 @@ def get_string_network(genes, group_name):
 
         return None
 
-
     network_df = pd.concat(
         all_networks,
         ignore_index=True
     )
 
-
-    # Remove duplicate interactions
     if (
         "preferredName_A" in network_df.columns
         and
@@ -216,18 +180,15 @@ def get_string_network(genes, group_name):
             ]
         )
 
-
     output_file = (
         f"results/ppi/"
         f"{group_name}_ppi_network.csv"
     )
 
-
     network_df.to_csv(
         output_file,
         index=False
     )
-
 
     print(
         f"\nTotal PPI interactions found: "
@@ -239,13 +200,7 @@ def get_string_network(genes, group_name):
         f"{output_file}"
     )
 
-
     return network_df
-
-
-# ============================================================
-# 5. CREATE NETWORK GRAPH
-# ============================================================
 
 def create_network(network_df, group_name):
 
@@ -262,9 +217,7 @@ def create_network(network_df, group_name):
 
         return None
 
-
     G = nx.Graph()
-
 
     for _, row in network_df.iterrows():
 
@@ -278,7 +231,6 @@ def create_network(network_df, group_name):
 
         score = row["score"]
 
-
         G.add_edge(
 
             protein1,
@@ -287,7 +239,6 @@ def create_network(network_df, group_name):
             weight=score
 
         )
-
 
     print(
         f"\n{group_name.capitalize()} "
@@ -304,13 +255,7 @@ def create_network(network_df, group_name):
         G.number_of_edges()
     )
 
-
     return G
-
-
-# ============================================================
-# 6. IDENTIFY HUB GENES
-# ============================================================
 
 def identify_hub_genes(G, group_name):
 
@@ -318,33 +263,24 @@ def identify_hub_genes(G, group_name):
 
         return None
 
-
     print(
         f"\nIdentifying hub genes for "
         f"{group_name} genes..."
     )
 
-
-    # Degree centrality
     degree_centrality = (
         nx.degree_centrality(G)
     )
 
-
-    # Betweenness centrality
     betweenness_centrality = (
         nx.betweenness_centrality(G)
     )
 
-
-    # Closeness centrality
     closeness_centrality = (
         nx.closeness_centrality(G)
     )
 
-
     hub_data = []
-
 
     for gene in G.nodes():
 
@@ -367,13 +303,10 @@ def identify_hub_genes(G, group_name):
 
         })
 
-
     hub_df = pd.DataFrame(
         hub_data
     )
 
-
-    # Sort according to degree
     hub_df = hub_df.sort_values(
 
         "Degree",
@@ -382,14 +315,12 @@ def identify_hub_genes(G, group_name):
 
     )
 
-
     output_file = (
 
         f"results/ppi/"
         f"{group_name}_hub_genes.csv"
 
     )
-
 
     hub_df.to_csv(
 
@@ -399,7 +330,6 @@ def identify_hub_genes(G, group_name):
 
     )
 
-
     print(
 
         f"Hub genes saved to: "
@@ -407,14 +337,12 @@ def identify_hub_genes(G, group_name):
 
     )
 
-
     print(
 
         f"\nTop 10 hub genes "
         f"({group_name}):"
 
     )
-
 
     print(
 
@@ -428,13 +356,7 @@ def identify_hub_genes(G, group_name):
 
     )
 
-
     return hub_df
-
-
-# ============================================================
-# 7. VISUALIZE TOP HUB GENE NETWORK
-# ============================================================
 
 def plot_ppi_network(
     G,
@@ -450,8 +372,6 @@ def plot_ppi_network(
 
         return
 
-
-    # Select top 20 hub genes
     top_genes = (
 
         hub_df["Gene"]
@@ -462,12 +382,9 @@ def plot_ppi_network(
 
     )
 
-
-    # Create subgraph
     subgraph = G.subgraph(
         top_genes
     )
-
 
     if (
         subgraph.number_of_nodes()
@@ -480,11 +397,9 @@ def plot_ppi_network(
 
         return
 
-
     plt.figure(
         figsize=(12, 10)
     )
-
 
     pos = nx.spring_layout(
 
@@ -494,8 +409,6 @@ def plot_ppi_network(
 
     )
 
-
-    # Node sizes based on degree
     node_sizes = [
 
         subgraph.degree(node) * 100
@@ -503,7 +416,6 @@ def plot_ppi_network(
         for node in subgraph.nodes()
 
     ]
-
 
     nx.draw_networkx_nodes(
 
@@ -517,7 +429,6 @@ def plot_ppi_network(
 
     )
 
-
     nx.draw_networkx_edges(
 
         subgraph,
@@ -527,7 +438,6 @@ def plot_ppi_network(
         alpha=0.5
 
     )
-
 
     nx.draw_networkx_labels(
 
@@ -539,7 +449,6 @@ def plot_ppi_network(
 
     )
 
-
     plt.title(
 
         f"Top Hub Genes PPI Network: "
@@ -547,11 +456,9 @@ def plot_ppi_network(
 
     )
 
-
     plt.axis("off")
 
     plt.tight_layout()
-
 
     output_file = (
 
@@ -559,7 +466,6 @@ def plot_ppi_network(
         f"{group_name}_ppi_network.png"
 
     )
-
 
     plt.savefig(
 
@@ -571,9 +477,7 @@ def plot_ppi_network(
 
     )
 
-
     plt.close()
-
 
     print(
 
@@ -581,16 +485,6 @@ def plot_ppi_network(
         f"{output_file}"
 
     )
-
-
-# ============================================================
-# 8. RUN PPI ANALYSIS
-# ============================================================
-
-
-# ------------------------------------------------------------
-# UPREGULATED GENES
-# ------------------------------------------------------------
 
 up_network_df = get_string_network(
 
@@ -600,7 +494,6 @@ up_network_df = get_string_network(
 
 )
 
-
 up_graph = create_network(
 
     up_network_df,
@@ -609,7 +502,6 @@ up_graph = create_network(
 
 )
 
-
 up_hub_df = identify_hub_genes(
 
     up_graph,
@@ -617,7 +509,6 @@ up_hub_df = identify_hub_genes(
     "upregulated"
 
 )
-
 
 plot_ppi_network(
 
@@ -629,11 +520,6 @@ plot_ppi_network(
 
 )
 
-
-# ------------------------------------------------------------
-# DOWNREGULATED GENES
-# ------------------------------------------------------------
-
 down_network_df = get_string_network(
 
     down_genes,
@@ -641,7 +527,6 @@ down_network_df = get_string_network(
     "downregulated"
 
 )
-
 
 down_graph = create_network(
 
@@ -651,7 +536,6 @@ down_graph = create_network(
 
 )
 
-
 down_hub_df = identify_hub_genes(
 
     down_graph,
@@ -659,7 +543,6 @@ down_hub_df = identify_hub_genes(
     "downregulated"
 
 )
-
 
 plot_ppi_network(
 
@@ -670,11 +553,6 @@ plot_ppi_network(
     "downregulated"
 
 )
-
-
-# ============================================================
-# 9. COMPLETE
-# ============================================================
 
 print("\n=================================================")
 

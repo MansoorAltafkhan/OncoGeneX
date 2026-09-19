@@ -26,9 +26,8 @@ print(up_df.columns.tolist())
 print("\nDownregulated columns:")
 print(down_df.columns.tolist())
 
-
 def extract_gene_data(df):
-    # The 'Gene' column contains IDs/probe IDs
+
     if "Gene" not in df.columns:
         raise ValueError(
             "'Gene' column not found. "
@@ -46,7 +45,6 @@ def extract_gene_data(df):
 
     return gene_ids
 
-
 top_up_ids = extract_gene_data(
     up_df.head(15)
 )
@@ -61,7 +59,6 @@ top_gene_ids = (
 )
 
 print("\nTop genes selected:", len(top_gene_ids))
-
 
 available_genes = [
     gene
@@ -91,7 +88,6 @@ if len(available_genes) == 0:
         "in the expression matrix."
     )
 
-
 gene_labels = {}
 
 combined_df = pd.concat(
@@ -119,7 +115,6 @@ for _, row in combined_df.iterrows():
     else:
         gene_labels[gene_id] = gene_id
 
-
 heatmap_data = expression[
     available_genes
 ].T
@@ -131,7 +126,6 @@ heatmap_data.index = [
     )
     for gene in available_genes
 ]
-
 
 heatmap_zscore = heatmap_data.apply(
     lambda x: (
@@ -146,7 +140,6 @@ heatmap_zscore = heatmap_zscore.replace(
 )
 
 heatmap_zscore = heatmap_zscore.fillna(0)
-
 
 plt.figure(
     figsize=(14, 10)
@@ -185,7 +178,6 @@ plt.title(
 )
 
 plt.tight_layout()
-
 
 output_file = (
     "results/visualization/"

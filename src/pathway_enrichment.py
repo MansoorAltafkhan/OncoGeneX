@@ -4,17 +4,7 @@ import pandas as pd
 import gseapy as gp
 import matplotlib.pyplot as plt
 
-
-# ============================================================
-# 1. CREATE OUTPUT DIRECTORY
-# ============================================================
-
 os.makedirs("results/enrichment", exist_ok=True)
-
-
-# ============================================================
-# 2. LOAD GENE LISTS
-# ============================================================
 
 up_file = "results/upregulated_genes.csv"
 down_file = "results/downregulated_genes.csv"
@@ -22,17 +12,11 @@ down_file = "results/downregulated_genes.csv"
 up_df = pd.read_csv(up_file)
 down_df = pd.read_csv(down_file)
 
-
 print("\nUpregulated file columns:")
 print(up_df.columns.tolist())
 
 print("\nDownregulated file columns:")
 print(down_df.columns.tolist())
-
-
-# ============================================================
-# 3. FUNCTION TO EXTRACT GENE SYMBOLS
-# ============================================================
 
 def extract_gene_symbols(df):
 
@@ -64,34 +48,21 @@ def extract_gene_symbols(df):
         .str.strip()
     )
 
-    # Remove empty values and duplicates
     genes = genes[genes != ""]
     genes = genes.drop_duplicates().tolist()
 
     return genes
 
-
 up_genes = extract_gene_symbols(up_df)
 down_genes = extract_gene_symbols(down_df)
 
-
 print("\nNumber of upregulated genes:", len(up_genes))
 print("Number of downregulated genes:", len(down_genes))
-
-
-# ============================================================
-# 4. DEFINE GENE SET LIBRARIES
-# ============================================================
 
 gene_sets = [
     "GO_Biological_Process_2023",
     "KEGG_2021_Human"
 ]
-
-
-# ============================================================
-# 5. FUNCTION TO RUN ENRICHR ANALYSIS
-# ============================================================
 
 def run_enrichment(genes, group_name):
 
@@ -112,7 +83,6 @@ def run_enrichment(genes, group_name):
         )
         return None
 
-    # Save complete results
     output_file = (
         f"results/enrichment/"
         f"{group_name}_enrichment.csv"
@@ -127,11 +97,6 @@ def run_enrichment(genes, group_name):
 
     return results
 
-
-# ============================================================
-# 6. RUN ENRICHMENT ANALYSIS
-# ============================================================
-
 up_results = run_enrichment(
     up_genes,
     "upregulated"
@@ -142,17 +107,11 @@ down_results = run_enrichment(
     "downregulated"
 )
 
-
-# ============================================================
-# 7. SEPARATE GO AND KEGG RESULTS
-# ============================================================
-
 def save_separate_results(results, group_name):
 
     if results is None or results.empty:
         return None, None
 
-    # GO Biological Process results
     go_results = results[
         results["Gene_set"].str.contains(
             "GO_Biological_Process",
@@ -161,7 +120,6 @@ def save_separate_results(results, group_name):
         )
     ].copy()
 
-    # KEGG results
     kegg_results = results[
         results["Gene_set"].str.contains(
             "KEGG",
@@ -170,7 +128,6 @@ def save_separate_results(results, group_name):
         )
     ].copy()
 
-    # Save GO results
     go_file = (
         f"results/enrichment/"
         f"GO_{group_name}.csv"
@@ -181,7 +138,6 @@ def save_separate_results(results, group_name):
         index=False
     )
 
-    # Save KEGG results
     kegg_file = (
         f"results/enrichment/"
         f"KEGG_{group_name}.csv"
@@ -197,23 +153,15 @@ def save_separate_results(results, group_name):
 
     return go_results, kegg_results
 
-
-# Separate upregulated results
 go_up, kegg_up = save_separate_results(
     up_results,
     "upregulated"
 )
 
-# Separate downregulated results
 go_down, kegg_down = save_separate_results(
     down_results,
     "downregulated"
 )
-
-
-# ============================================================
-# 8. FUNCTION TO CREATE BAR PLOTS
-# ============================================================
 
 def create_barplot(results, analysis_type, group_name):
 
@@ -224,32 +172,27 @@ def create_barplot(results, analysis_type, group_name):
         )
         return
 
-    # Sort by adjusted p-value
     top_results = results.sort_values(
         "Adjusted P-value",
         ascending=True
     ).head(10).copy()
 
-    # Avoid log10(0)
     top_results["Adjusted P-value"] = (
         top_results["Adjusted P-value"]
         .clip(lower=1e-300)
     )
 
-    # Calculate -log10 adjusted p-value
     top_results["minus_log10_p"] = (
         -top_results["Adjusted P-value"].apply(
             math.log10
         )
     )
 
-    # Reverse so most significant appears at the top
     top_results = top_results.sort_values(
         "minus_log10_p",
         ascending=True
     )
 
-    # Create figure
     plt.figure(figsize=(12, 7))
 
     plt.barh(
@@ -275,7 +218,6 @@ def create_barplot(results, analysis_type, group_name):
 
     plt.tight_layout()
 
-    # File name
     analysis_filename = analysis_type.lower().replace(" ", "_")
 
     output_file = (
@@ -293,43 +235,29 @@ def create_barplot(results, analysis_type, group_name):
 
     print(f"Plot saved: {output_file}")
 
-
-# ============================================================
-# 9. CREATE FOUR SEPARATE PLOTS
-# ============================================================
-
-# GO Upregulated
 create_barplot(
     go_up,
     "GO Biological Process",
     "upregulated"
 )
 
-# GO Downregulated
 create_barplot(
     go_down,
     "GO Biological Process",
     "downregulated"
 )
 
-# KEGG Upregulated
 create_barplot(
     kegg_up,
     "KEGG Pathway",
     "upregulated"
 )
 
-# KEGG Downregulated
 create_barplot(
     kegg_down,
     "KEGG Pathway",
     "downregulated"
 )
-
-
-# ============================================================
-# 10. COMPLETE
-# ============================================================
 
 print("\n=================================================")
 print("PATHWAY ENRICHMENT ANALYSIS COMPLETE")
